@@ -4,25 +4,29 @@
   tasks:
     - name: create project
       os_project:
-        cloud: openstack-env
-        state: present
-        name: TESTPROJECT
-        description: demo description
-        domain_id: default
-        enabled: True
-    - name: create user
-      os_user:
         auth:
           auth_url: http://10.2.2.104:35357/v3
           username: admin
           password: password
           project_name: admin
         state: present
-        name: demouser
-        password: password
-        email: demouser@testproject.com
-        domain: default
-        default_project: TESTPROJECT
+        name: TESTPROJECT
+        description: demo description
+        domain_id: default
+        enabled: True
+#    - name: create user
+#      os_user:
+#        auth:
+#          auth_url: http://10.2.2.104:35357/v3
+#          username: admin
+#          password: password
+#          project_name: admin
+#        state: present
+#        name: demouser
+#        password: password
+#        email: demouser@testproject.com
+#        domain: default
+#        default_project: TESTPROJECT
     - name: assign role for admin user
       os_user_role:
         auth:
@@ -40,11 +44,12 @@
           username: admin
           password: password
           project_name: TESTPROJECT
-        name: ubuntu16
+        name: websrv
         container_format: bare
-        disk_format: raw
+        disk_format: qcow2
         state: present
-        filename: xenial-server-cloudimg-amd64-disk1.img
+        filename: websrv.qcow2
+        #filename: xenial-server-cloudimg-amd64-disk1.img
     - name: create flavor m1.small
       os_nova_flavor:
         cloud: openstack-env
@@ -116,7 +121,51 @@
         state: present
         name: ansible_key
         public_key_file: /home/stack/.ssh/id_rsa.pub
-    - name: deploy an instance
+    - name: security group
+      os_security_group:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: password
+          project_name: TESTPROJECT
+        name: websrv-sec
+    - name: security group
+      os_security_group_rule:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: password
+          project_name: TESTPROJECT
+        security_group: websrv-sec
+        protocol: tcp
+        port_range_min: 80
+        port_range_max: 80
+        remote_ip_prefix: 0.0.0.0/0
+    - name: create port for instance1
+      os_port:
+        state: present
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: password
+          project_name: TESTPROJECT
+        name: vm1
+        network: internal_network
+        fixed_ips:
+          - ip_address: 100.100.100.101
+    - name: create port for instance2
+      os_port:
+        state: present
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: password
+          project_name: TESTPROJECT
+        name: vm2
+        network: internal_network
+        fixed_ips:
+          - ip_address: 100.100.100.102
+    - name: deploy an instance1
       os_server:
         auth:
           auth_url: http://10.2.2.104:35357/v3
@@ -124,11 +173,52 @@
           password: password
           project_name: TESTPROJECT
         state: present
-        name: websrv
+        name: websrv1
         key_name: ansible_key
-        image: ubuntu16
+        image: websrv
         timeout: 200
         flavor: m1.small
-        auto_floating_ip: no
-        network: internal_netework
-        security_groups: default
+#        auto_floating_ip: no
+        security_groups: websrv-sec
+        nics:
+          - port-name: vm1
+    - name: deploy an instance2
+      os_server:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: password
+          project_name: TESTPROJECT
+        state: present
+        name: websrv2
+        key_name: ansible_key
+        image: websrv
+        timeout: 200
+        flavor: m1.small
+#        auto_floating_ip: no
+        security_groups: websrv-sec
+        nics:
+          - port-name: vm2
+    - name: create lb
+      shell: |
+        source ~/overcloudrc.v3
+        neutron lbaas-loadbalancer-create --name lb1 intnet
+        neutron lbaas-listener-create --loadbalancer lb1 --protocol HTTP --protocol-port 80 --name listener1
+    - name: create lbpool
+      shell: |
+        source ~/overcloudrc.v3
+        sleep 3
+        neutron lbaas-pool-create --lb-algorithm ROUND_ROBIN --protocol HTTP --name listener1 --listener listener1 --name lbpool
+    - name: add members
+      shell: |
+        source ~/overcloudrc.v3
+        sleep 1
+        neutron lbaas-member-create  --subnet intnet --address 100.100.100.101 --protocol-port 80 lbpool
+        sleep 1
+        neutron lbaas-member-create  --subnet intnet --address 100.100.100.102 --protocol-port 80 lbpool
+    - name: associate floating ip
+      shell: |
+        source ~/overcloudrc.v3
+        openstack floating ip create --floating-ip-address 10.2.2.200 external_network
+        sleep 3
+        neutron floatingip-associate `openstack floating ip show 10.2.2.200 -c id -f value` `openstack port list -f value | grep loadbalancer | awk '{print $1}'`

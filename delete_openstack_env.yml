@@ -1,0 +1,53 @@
+- name: delete openstack env
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: delete load balancer
+      shell: |
+        source ~/overcloudrc.v3-naim
+        neutron lbaas-pool-delete lbpool
+        neutron lbaas-listener-delete listener1
+        neutron lbaas-loadbalancer-delete lb1
+      ignore_errors: yes
+    - name: delete floating ip 
+      shell: |
+        source ~/overcloudrc.v3-naim
+        openstack floating ip delete 10.2.2.200
+      ignore_errors: yes
+    - name: delete vms
+      shell: |
+        source ~/overcloudrc.v3-naim
+        openstack server delete websrv1
+        openstack server delete websrv2
+      ignore_errors: yes
+    - name: delete security group & keypair
+      shell: |
+        source ~/overcloudrc.v3-naim
+        openstack security group delete websrv-sec
+        openstack keypair delete ansible_key
+      ignore_errors: yes
+    - name: delete port & network
+      shell: |
+        source ~/overcloudrc.v3-naim
+        openstack router remove subnet vrouter intnet
+        openstack router delete vrouter
+        openstack port delete vm1
+        openstack port delete vm2
+        openstack network delete internal_network
+      ignore_errors: yes
+    - name: delete network 
+      shell: |
+        source ~/overcloudrc.v3
+        openstack network delete external_network
+      ignore_errors: yes
+    - name: delete flavor & image
+      shell: |
+        source ~/overcloudrc.v3
+        openstack flavor delete m1.small
+        openstack image delete websrv
+      ignore_errors: yes
+    - name: delete project
+      shell: | 
+        source ~/overcloudrc.v3
+        openstack project delete NAIMNETWORKS
+      ignore_errors: yes
