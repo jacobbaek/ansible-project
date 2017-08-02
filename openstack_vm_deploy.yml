@@ -6,7 +6,7 @@
       os_project:
         cloud: openstack-env
         state: present
-        name: NAIMNETWORKS
+        name: TESTPROJECT
         description: demo description
         domain_id: default
         enabled: True
@@ -15,31 +15,31 @@
         auth:
           auth_url: http://10.2.2.104:35357/v3
           username: admin
-          password: naim4321
+          password: password
           project_name: admin
         state: present
         name: demouser
         password: password
-        email: demouser@naimnetworks.com
+        email: demouser@testproject.com
         domain: default
-        default_project: NAIMNETWORKS
+        default_project: TESTPROJECT
     - name: assign role for admin user
       os_user_role:
         auth:
           auth_url: http://10.2.2.104:35357/v3
           username: admin
-          password: naim4321
+          password: password
           project_name: admin
         user: admin
         role: admin
-        project: NAIMNETWORKS
+        project: TESTPROJECT
     - name: upload glance image
       os_image:
         auth:
           auth_url: http://10.2.2.104:35357/v3
           username: admin
-          password: naim4321
-          project_name: NAIMNETWORKS
+          password: password
+          project_name: TESTPROJECT
         name: ubuntu16
         container_format: bare
         disk_format: raw
@@ -58,8 +58,8 @@
         auth:
           auth_url: http://10.2.2.104:35357/v3
           username: admin
-          password: naim4321
-          project_name: NAIMNETWORKS
+          password: password
+          project_name: TESTPROJECT
         name: internal_network
         state: present
         external: false
@@ -68,8 +68,8 @@
         auth:
           auth_url: http://10.2.2.104:35357/v3
           username: admin
-          password: naim4321
-          project_name: NAIMNETWORKS
+          password: password
+          project_name: TESTPROJECT
         name: intnet
         state: present
         network_name: internal_network
@@ -101,8 +101,8 @@
         auth:
           auth_url: http://10.2.2.104:35357/v3
           username: admin
-          password: naim4321
-          project_name: NAIMNETWORKS
+          password: password
+          project_name: TESTPROJECT
         name: vrouter
         network: external_network
         external_fixed_ips:
@@ -121,8 +121,8 @@
         auth:
           auth_url: http://10.2.2.104:35357/v3
           username: admin
-          password: naim4321
-          project_name: NAIMNETWORKS
+          password: password
+          project_name: TESTPROJECT
         state: present
         name: websrv
         key_name: ansible_key
