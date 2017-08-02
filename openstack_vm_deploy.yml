@@ -1,0 +1,134 @@
+- name : deploy vm on openstack
+  hosts : localhost
+  gather_facts: false
+  tasks:
+    - name: create project
+      os_project:
+        cloud: openstack-env
+        state: present
+        name: NAIMNETWORKS
+        description: demo description
+        domain_id: default
+        enabled: True
+    - name: create user
+      os_user:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: naim4321
+          project_name: admin
+        state: present
+        name: demouser
+        password: password
+        email: demouser@naimnetworks.com
+        domain: default
+        default_project: NAIMNETWORKS
+    - name: assign role for admin user
+      os_user_role:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: naim4321
+          project_name: admin
+        user: admin
+        role: admin
+        project: NAIMNETWORKS
+    - name: upload glance image
+      os_image:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: naim4321
+          project_name: NAIMNETWORKS
+        name: ubuntu16
+        container_format: bare
+        disk_format: raw
+        state: present
+        filename: xenial-server-cloudimg-amd64-disk1.img
+    - name: create flavor m1.small
+      os_nova_flavor:
+        cloud: openstack-env
+        state: present
+        name: m1.small
+        ram: 2048
+        vcpus: 1
+        disk: 20
+    - name: create network
+      os_network:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: naim4321
+          project_name: NAIMNETWORKS
+        name: internal_network
+        state: present
+        external: false
+    - name: create subnet
+      os_subnet:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: naim4321
+          project_name: NAIMNETWORKS
+        name: intnet
+        state: present
+        network_name: internal_network
+        cidr: 100.100.100.0/24
+        dns_nameservers:
+          - 8.8.8.8
+    - name: create external network
+      os_network:
+        cloud: openstack-env
+        name: external_network
+        state: present
+        provider_network_type: flat
+        provider_physical_network: datacentre
+        external: true
+        shared: true
+    - name: create external subnet
+      os_subnet:
+        cloud: openstack-env
+        name: extnet
+        state: present
+        network_name: external_network
+        cidr: 10.2.2.0/24
+        allocation_pool_start: 10.2.2.150
+        allocation_pool_end: 10.2.2.250
+        dns_nameservers:
+          - 8.8.8.8
+    - name: create external router
+      os_router:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: naim4321
+          project_name: NAIMNETWORKS
+        name: vrouter
+        network: external_network
+        external_fixed_ips:
+          - subnet: extnet
+            ip: 10.2.2.153
+        interfaces:
+          - intnet
+    - name:
+      os_keypair:
+        cloud: openstack-env
+        state: present
+        name: ansible_key
+        public_key_file: /home/stack/.ssh/id_rsa.pub
+    - name: deploy an instance
+      os_server:
+        auth:
+          auth_url: http://10.2.2.104:35357/v3
+          username: admin
+          password: naim4321
+          project_name: NAIMNETWORKS
+        state: present
+        name: websrv
+        key_name: ansible_key
+        image: ubuntu16
+        timeout: 200
+        flavor: m1.small
+        auto_floating_ip: no
+        network: internal_netework
+        security_groups: default
